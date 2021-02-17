@@ -106,6 +106,7 @@ func TestFetchUrlBody(t *testing.T) {
 			} else {
 				assert.Equal("", got)
 				assert.Error(err)
+				assert.IsType(&urlError{}, err)
 			}
 		})
 	}
