@@ -27,8 +27,6 @@ var httpResponses = []struct {
 	StatusCode int
 }{
 	{"OK", 200},
-	{"Moved Permanently", 301},
-	{"Found", 302},
 	{"Not Found", 404},
 	{"Gone", 410},
 	{"Internal Server Error", 500},
@@ -93,7 +91,7 @@ func TestFetchUrlBody(t *testing.T) {
 				Reply(tt.HTTPStatusCode).
 				BodyString(BODY)
 
-			got, err := FetchUrlBody(tt.URI)
+			got, err := FetchURLBody(tt.URI)
 
 			if tt.URIIsValid {
 				switch tt.HTTPStatusCode {
@@ -103,6 +101,7 @@ func TestFetchUrlBody(t *testing.T) {
 				default:
 					assert.Equal("", got)
 					assert.Error(err)
+					assert.IsType(&httpError{}, err)
 				}
 			} else {
 				assert.Equal("", got)

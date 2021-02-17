@@ -15,7 +15,8 @@ func (e *httpError) Error() string {
 	return fmt.Sprintf("%d: %s", e.StatusCode, e.Status)
 }
 
-func FetchUrlBody(url string) (string, error) {
+
+func FetchURLBody(url string) (string, error) {
 	resp, err := http.Get(url)
 
 	if err != nil {
