@@ -93,7 +93,11 @@ func TestFetchUrlBody(t *testing.T) {
 
 			got, err := FetchURLBody(tt.URI)
 
-			if tt.URIIsValid {
+			if !tt.URIIsValid {
+				assert.Equal("", got)
+				assert.Error(err)
+				assert.IsType(&urlError{}, err)
+			} else {
 				switch tt.HTTPStatusCode {
 				case 200:
 					assert.Equal(BODY, got)
@@ -103,10 +107,6 @@ func TestFetchUrlBody(t *testing.T) {
 					assert.Error(err)
 					assert.IsType(&httpError{}, err)
 				}
-			} else {
-				assert.Equal("", got)
-				assert.Error(err)
-				assert.IsType(&urlError{}, err)
 			}
 		})
 	}
