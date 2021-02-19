@@ -1,112 +1,90 @@
 package fetcher
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
-	"net/url"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
 	"testing"
 )
 
-const BODY = "egg"
-
-var uris = []string{
-	// Valid URIs
-	"http://foo.com/blah_blah",
-	"http://www.example.com/wpstyle/?p=364",
-	"https://www.example.com/foo/?bar=baz&inga=42&quux",
-	"http://223.255.255.254",
-	// Invalid URIs
-	"htp://foo.com",
-	"//foo.com",
-	"https:2&quux",
-}
-
-var httpResponses = []struct {
-	Status     string
-	StatusCode int
+var httpTestCases = []struct {
+	name       string
+	url        string
+	statusCode int
+	body       string
+	wantBody   string
+	wantErr    string
 }{
-	{"OK", 200},
-	{"Not Found", 404},
-	{"Gone", 410},
-	{"Internal Server Error", 500},
-	{"Service Unavailable", 503},
+	{name: "ok", url: "http://foo.bar", statusCode: 200, body: "spam", wantBody: "spam"},
+	{name: "invalid url", url: "", wantErr: `Get "": unsupported protocol scheme ""`},
+	{name: "not found", url: "http://foo.bar", statusCode: 404},
+	{name: "internal server error", url: "http://foo.bar", statusCode: 500},
+	{name: "service unavailable", url: "http://foo.bar", statusCode: 503},
 }
 
-type FetchURLTestCase struct {
-	TestCase       string
-	URI            string
-	URIIsValid     bool
-	HTTPStatusCode int
-	Body           string
-}
+func TestHttpGet(t *testing.T) {
+	for _, tt := range httpTestCases {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 
-func URIIsValid(uri string) bool {
-	parsedURI, err := url.ParseRequestURI(uri)
+			if tt.statusCode != 0 {
+				defer gock.Off()
+				gock.New(tt.url).
+					Reply(tt.statusCode).
+					BodyString(tt.body)
+			}
 
-	if err != nil {
-		return false
+			resp, err := http.Get(tt.url)
+			if tt.wantErr != "" {
+				assert.Error(err)
+				assert.EqualError(err, tt.wantErr, "The two HTTP errors should be the same.")
+			} else {
+				assert.NotNil(resp.Body)
+
+				bodyBytes, _ := io.ReadAll(resp.Body)
+				body := string(bodyBytes)
+
+				assert.NoError(err)
+				assert.Equal(tt.statusCode, resp.StatusCode, "The two status codes should be the same.")
+				assert.Equal(tt.wantBody, body, "The two body contents should be the same.")
+			}
+		})
 	}
-
-	switch parsedURI.Scheme {
-	case "http", "https":
-		return true
-	default:
-		return false
-	}
-}
-
-func generateFetchURLTestCase() []FetchURLTestCase {
-	tts := []FetchURLTestCase{}
-	for _, uri := range uris {
-		var testCaseMsgStart string
-		if URIIsValid(uri) {
-			testCaseMsgStart = fmt.Sprintf("Valid URL(%s)", uri)
-		} else {
-			testCaseMsgStart = fmt.Sprintf("Invalid URL(%s)", uri)
-		}
-
-		for _, http := range httpResponses {
-			testCaseMsg := fmt.Sprintf("%s %d %s", testCaseMsgStart, http.StatusCode, http.Status)
-			tts = append(tts, FetchURLTestCase{
-				TestCase:       testCaseMsg,
-				URI:            uri,
-				URIIsValid:     URIIsValid(uri),
-				HTTPStatusCode: http.StatusCode,
-				Body:           BODY,
-			})
-		}
-	}
-
-	return tts
 }
 
 func TestFetchUrlBody(t *testing.T) {
-	for _, tt := range generateFetchURLTestCase() {
-		t.Run(tt.TestCase, func(t *testing.T) {
+	httpErrorStartsWithStatusCode := func(err error, statusCode int) bool {
+		statusCodeStr := strconv.Itoa(statusCode)
+		errStr := err.Error()
+
+		return strings.HasPrefix(errStr, statusCodeStr)
+	}
+
+	for _, tt := range httpTestCases {
+		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
-			defer gock.Off()
 
-			gock.New(tt.URI).
-				Reply(tt.HTTPStatusCode).
-				BodyString(BODY)
+			if tt.statusCode != 0 {
+				defer gock.Off()
+				gock.New(tt.url).
+					Reply(tt.statusCode).
+					BodyString(tt.body)
+			}
 
-			got, err := FetchURLBody(tt.URI)
+			actualBody, err := fetchURLBody(tt.url)
 
-			if !tt.URIIsValid {
-				assert.Equal("", got)
+			if tt.wantErr != "" {
 				assert.Error(err)
-				assert.IsType(&urlError{}, err)
+				assert.EqualError(err, tt.wantErr, "The two HTTP errors should be the same.")
+			} else if tt.statusCode != 200 {
+				assert.Error(err)
+				assert.True(httpErrorStartsWithStatusCode(err, tt.statusCode))
 			} else {
-				switch tt.HTTPStatusCode {
-				case 200:
-					assert.Equal(BODY, got)
-					assert.NoError(err)
-				default:
-					assert.Equal("", got)
-					assert.Error(err)
-					assert.IsType(&httpError{}, err)
-				}
+				assert.NotNil(actualBody)
+				assert.NoError(err)
 			}
 		})
 	}
