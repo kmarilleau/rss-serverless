@@ -1,13 +1,12 @@
 package fetcher
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/h2non/gock.v1"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/h2non/gock.v1"
 )
 
 var httpTestCases = []struct {
@@ -56,13 +55,6 @@ func TestHttpGet(t *testing.T) {
 }
 
 func TestFetchUrlBody(t *testing.T) {
-	httpErrorStartsWithStatusCode := func(err error, statusCode int) bool {
-		statusCodeStr := strconv.Itoa(statusCode)
-		errStr := err.Error()
-
-		return strings.HasPrefix(errStr, statusCodeStr)
-	}
-
 	for _, tt := range httpTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)

@@ -2,22 +2,27 @@ package fetcher
 
 import (
 	"bufio"
-	"github.com/cskr/pubsub"
-	"github.com/phayes/freeport"
+	"context"
 	"io"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
+
+	"cloud.google.com/go/firestore"
+	"github.com/cskr/pubsub"
+	"github.com/phayes/freeport"
 )
 
 // Network
-func getFreeHostPort() (port int) {
+func getFreeHostPort() uint16 {
 	port, err := freeport.GetFreePort()
 	if err != nil {
 		log.Fatal(err)
 	}
-	return
+
+	return uint16(port)
 }
 
 // Process
@@ -51,7 +56,7 @@ func getStreamReadlinesIterator(stream io.ReadCloser) (<-chan string, error) {
 	chnl := make(chan string)
 	go func() {
 		for scanner.Scan() {
-			if line := scanner.Text(); stringIsNotEmpty(line) {
+			if line := scanner.Text(); !stringIsEmpty(line) {
 				chnl <- line
 			}
 		}
@@ -73,7 +78,39 @@ func logPubSubTopic(ps *pubsub.PubSub, topicName string) {
 	}
 }
 
+// Firestore
+func getAllCollections(ctx context.Context, dbClient *firestore.Client) (c []*firestore.CollectionRef) {
+	c, err := dbClient.Collections(ctx).GetAll()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return
+}
+
+func getAllDocuments(ctx context.Context, c *firestore.CollectionRef) (d []*firestore.DocumentRef) {
+	d, err := c.DocumentRefs(ctx).GetAll()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return
+}
+
+func clearAllFirestoreData(ctx context.Context, dbClient *firestore.Client) {
+	for _, collection := range getAllCollections(ctx, dbClient) {
+		for _, document := range getAllDocuments(ctx, collection) {
+			if _, err := document.Delete(ctx); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+}
+
 // Others
-func stringIsNotEmpty(str string) bool {
-	return strings.TrimSpace(str) != ""
+func httpErrorStartsWithStatusCode(err error, statusCode int) bool {
+	statusCodeStr := strconv.Itoa(statusCode)
+	errStr := err.Error()
+
+	return strings.HasPrefix(errStr, statusCodeStr)
 }
