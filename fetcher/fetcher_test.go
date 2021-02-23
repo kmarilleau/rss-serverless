@@ -18,7 +18,7 @@ var httpTestCases = []struct {
 	wantErr    string
 }{
 	{name: "ok", url: "http://foo.bar", statusCode: 200, body: "spam", wantBody: "spam"},
-	{name: "invalid url", url: "", wantErr: `Get "": unsupported protocol scheme ""`},
+	{name: "invalid url", url: "&", wantErr: `Get "&": unsupported protocol scheme ""`},
 	{name: "not found", url: "http://foo.bar", statusCode: 404},
 	{name: "internal server error", url: "http://foo.bar", statusCode: 500},
 	{name: "service unavailable", url: "http://foo.bar", statusCode: 503},
