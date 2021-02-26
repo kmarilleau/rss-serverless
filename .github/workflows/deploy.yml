@@ -1,0 +1,60 @@
+name: "Terraform"
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform:
+    name: "Terraform"
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        dir: ["terraform-dev"]
+
+    defaults:
+      run:
+        shell: bash
+
+    env:
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get Branch Name
+        uses: nelonoel/branch-name@v1.0.1
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            ${{ matrix.dir }}:
+              - '${{ matrix.dir }}/**'
+
+      - name: Setup Terraform
+        if: steps.changes.outputs.${{ matrix.dir }} == 'true'
+        uses: hashicorp/setup-terraform@v1
+
+      - name: Terraform Init
+        if: steps.changes.outputs.${{ matrix.dir }} == 'true'
+        run: terraform init
+        working-directory: ${{ matrix.dir }} 
+
+      - name: Terraform Plan
+        if: steps.changes.outputs.${{ matrix.dir }} == 'true'
+        run: terraform plan
+        working-directory: ${{ matrix.dir }}
+
+      - name: Terraform Apply
+        if: |
+          steps.changes.outputs.${{ matrix.dir }} == 'true' &&
+          BRANCH_NAME == "main" && github.event_name == 'push'
+        run: terraform apply -auto-approve
+        working-directory: ${{ matrix.dir }}
