@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -162,12 +161,9 @@ func TestFetchURLAndStoreItsContent(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	var testExitCode int
-	defer os.Exit(testExitCode)
-
 	firestoreEmulator := FirestoreEmulator{Verbose: true}
 	firestoreEmulator.Start()
 	defer firestoreEmulator.Shutdown()
 
-	testExitCode = m.Run()
+	m.Run()
 }
