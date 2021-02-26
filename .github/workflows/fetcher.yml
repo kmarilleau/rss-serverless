@@ -1,4 +1,4 @@
-name: Fetcher
+name: Test
 
 on:
   push:
@@ -11,7 +11,7 @@ defaults:
     working-directory: fetcher
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
