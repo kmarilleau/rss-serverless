@@ -1,7 +1,7 @@
 package fetcher
 
 import (
-	"io"
+	"io/ioutil"
 	"net/http"
 	"testing"
 
@@ -43,7 +43,7 @@ func TestHttpGet(t *testing.T) {
 			} else {
 				assert.NotNil(resp.Body)
 
-				bodyBytes, _ := io.ReadAll(resp.Body)
+				bodyBytes, _ := ioutil.ReadAll(resp.Body)
 				body := string(bodyBytes)
 
 				assert.NoError(err)
