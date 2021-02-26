@@ -1,3 +1,3 @@
 # feeds-fetcher
 
-![](feeds-fetcher.svg)
+![](diagram.svg)
