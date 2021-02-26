@@ -7,6 +7,11 @@ on:
   pull_request:
     branches:
       - main
+  workflow_run:
+    workflows: ["Test"]
+    branches: [main]
+    types: 
+      - completed
 
 jobs:
   terraform:
@@ -15,14 +20,15 @@ jobs:
 
     strategy:
       matrix:
-        dir: ["terraform-dev"]
+        dir: ["dev"]
 
     defaults:
       run:
         shell: bash
 
     env:
-      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      TF_VAR_project: ${{ secrets.GCP_PROJECT }}
 
     steps:
       - name: Checkout
@@ -36,7 +42,7 @@ jobs:
         with:
           filters: |
             ${{ matrix.dir }}:
-              - '${{ matrix.dir }}/**'
+              - 'terraform/${{ matrix.dir }}/**'
 
       - name: Setup Terraform
         if: steps.changes.outputs.${{ matrix.dir }} == 'true'
@@ -45,16 +51,16 @@ jobs:
       - name: Terraform Init
         if: steps.changes.outputs.${{ matrix.dir }} == 'true'
         run: terraform init
-        working-directory: ${{ matrix.dir }} 
+        working-directory: terraform/${{ matrix.dir }} 
 
       - name: Terraform Plan
         if: steps.changes.outputs.${{ matrix.dir }} == 'true'
         run: terraform plan
-        working-directory: ${{ matrix.dir }}
+        working-directory: terraform/${{ matrix.dir }}
 
       - name: Terraform Apply
         if: |
           steps.changes.outputs.${{ matrix.dir }} == 'true' &&
           BRANCH_NAME == "main" && github.event_name == 'push'
         run: terraform apply -auto-approve
-        working-directory: ${{ matrix.dir }}
+        working-directory: terraform/${{ matrix.dir }}
