@@ -2,30 +2,35 @@ name: Test
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-
-defaults:
-  run:
-    working-directory: fetcher
+    branches: [main]
 
 jobs:
   unit:
+    name: "Unit Test"
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        function_dir: ["feeds-fetcher/fetcher"]
+
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.15
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
 
-    - name: Install Go Dependencies
-      run: go mod download
-    
-    - name: Install Firestore Emulator
-      run: sudo apt-get install -y google-cloud-sdk-firestore-emulator
+      - name: Install Go Dependencies
+        run: go mod download
+        working-directory: ${{ matrix.function_dir }}
 
-    - name: Test
-      run: go test -v .
+      - name: Install Firestore Emulator
+        run: sudo apt-get install -y google-cloud-sdk-firestore-emulator
+        working-directory: ${{ matrix.function_dir }}
+
+      - name: Test
+        run: go test -v .
+        working-directory: ${{ matrix.function_dir }}
