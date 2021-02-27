@@ -21,7 +21,8 @@ jobs:
         shell: bash
 
     env:
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      GOOGLE_BACKEND_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
       TF_VAR_project: ${{ secrets.GCP_PROJECT }}
 
     steps:
