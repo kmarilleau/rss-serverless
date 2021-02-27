@@ -2,10 +2,6 @@ variable "project" {
   type = string
 }
 
-variable "backend_bucket" {
-  type = string
-}
-
 variable "region" {
   default = "us-central1"
 }
