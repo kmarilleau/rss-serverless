@@ -10,10 +10,7 @@ variable "zone" {
   default = "us-central1-c"
 }
 
-variable "services" {
-  type = list(string)
-  default = [
-    "cloudfunctions.googleapis.com",
-    "cloudbuild.googleapis.com",
-  ]
+variable "project_dir" {
+  type    = string
+  default = "../../"
 }
