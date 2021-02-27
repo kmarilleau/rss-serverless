@@ -1,6 +1,6 @@
 locals {
   timestamp = formatdate("YYMMDDhhmmss", timestamp())
-  root_dir  = abspath(var.source)
+  root_dir  = abspath(var.function_source)
 }
 
 # Compress source code
