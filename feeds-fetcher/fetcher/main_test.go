@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"github.com/kmarilleau/rfe"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 )
@@ -161,7 +162,7 @@ func TestFetchURLAndStoreItsContent(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	firestoreEmulator := FirestoreEmulator{Verbose: true}
+	firestoreEmulator := rfe.FirestoreEmulator{Verbose: true}
 	firestoreEmulator.Start()
 	defer firestoreEmulator.Shutdown()
 
