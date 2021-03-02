@@ -107,7 +107,6 @@ func TestFetchURLAndStoreItsContent(t *testing.T) {
 
 	getJSONRequestData := func(feedDocId string, url string) string {
 		jsonBytes, _ := json.Marshal(RequestData{
-			Environment: "test",
 			DocumentID:  feedDocId,
 			URL:         url,
 		})
@@ -147,7 +146,7 @@ func TestFetchURLAndStoreItsContent(t *testing.T) {
 			assert.Equal(tt.wantStatus, feed.LastStatus)
 
 			// Test Fetched Document
-			if tt.wantStatus == lastStatusOk {
+			if tt.wantStatus == LastStatusOk {
 				fetchedDoc := dbClient.Collection(FetchedCollection).Doc(gotResult.FetchedDocID)
 				fetched := FetchedDoc{}
 				fetched.LoadFromDocRef(ctx, fetchedDoc)

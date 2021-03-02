@@ -15,7 +15,7 @@ const FeedsCollection = "feeds"
 const FetchedCollection = "fetched_feeds"
 
 const RequiredJSONFieldsNotFound = "Required JSON fields not found"
-const lastStatusOk = "OK"
+const LastStatusOk = "OK"
 
 type RequestData struct {
 	Environment string `json:"environment"`
@@ -62,12 +62,12 @@ func (s *FetchedDoc) LoadFromDocRef(ctx context.Context, doc *firestore.Document
 	return err
 }
 
-func getProjectID(environment string) string {
-	switch environment {
-	case "test":
-		return "test"
-	default:
+func getProjectID() string {
+	switch os.Getenv("ENV") {
+	case "PROD":
 		return os.Getenv("GOOGLE_CLOUD_PROJECT")
+	default:
+		return "test"
 	}
 
 }
@@ -135,7 +135,7 @@ func FetchURLAndStoreItsContent(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	projectID := getProjectID(requestData.Environment)
+	projectID := getProjectID()
 
 	dbClient, err := firestore.NewClient(ctx, projectID)
 	if err != nil {
@@ -168,9 +168,9 @@ func FetchURLAndStoreItsContent(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	updateFeedLastFetchStatus(ctx, feedDoc, lastStatusOk)
+	updateFeedLastFetchStatus(ctx, feedDoc, LastStatusOk)
 	updateFeedFetchTime(ctx, feedDoc)
 
-	result.Status = lastStatusOk
+	result.Status = LastStatusOk
 	writeResultOn(result, w)
 }
