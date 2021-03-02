@@ -1,4 +1,4 @@
-package gfuncs
+package gcfuncs
 
 import "os"
 
