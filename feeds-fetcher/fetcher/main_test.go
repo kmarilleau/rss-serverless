@@ -87,7 +87,7 @@ func TestFetchURLAndStoreItsContent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	dbClient, err := firestore.NewClient(ctx, "test")
+	dbClient, err := firestore.NewClient(ctx, "test-project")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -107,8 +107,8 @@ func TestFetchURLAndStoreItsContent(t *testing.T) {
 
 	getJSONRequestData := func(feedDocId string, url string) string {
 		jsonBytes, _ := json.Marshal(RequestData{
-			DocumentID:  feedDocId,
-			URL:         url,
+			DocumentID: feedDocId,
+			URL:        url,
 		})
 
 		return string(jsonBytes)
@@ -125,10 +125,10 @@ func TestFetchURLAndStoreItsContent(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			if tt.statusCode != 0 {
-				defer gock.Off()
 				gock.New(tt.url).
 					Reply(tt.statusCode).
 					BodyString(tt.body)
+				defer gock.Off()
 			}
 
 			FetchURLAndStoreItsContent(rr, req)

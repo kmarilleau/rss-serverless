@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -17,10 +18,14 @@ const FetchedCollection = "fetched_feeds"
 const RequiredJSONFieldsNotFound = "Required JSON fields not found"
 const LastStatusOk = "OK"
 
+var env = getEnv()
+var projectID string
+var dbClient *firestore.Client
+var globctx context.Context
+
 type RequestData struct {
-	Environment string `json:"environment"`
-	DocumentID  string `json:"documentId"`
-	URL         string `json:"url"`
+	DocumentID string `json:"documentId"`
+	URL        string `json:"url"`
 }
 
 type Result struct {
@@ -34,9 +39,9 @@ type Doc interface {
 }
 
 type FeedDoc struct {
-	Locked     bool   `firestore:"currentlyFetched"`
-	LastStatus string `firestore:"lastFetchStatus"`
-	FetchedAt  bool   `firestore:"fetchedAt"`
+	Locked     bool      `firestore:"currentlyFetched"`
+	LastStatus string    `firestore:"lastFetchStatus"`
+	FetchedAT  time.Time `firestore:"fetchedAt"`
 }
 
 func (s *FeedDoc) LoadFromDocRef(ctx context.Context, doc *firestore.DocumentRef) error {
@@ -63,13 +68,23 @@ func (s *FetchedDoc) LoadFromDocRef(ctx context.Context, doc *firestore.Document
 }
 
 func getProjectID() string {
-	switch os.Getenv("ENV") {
+	switch env {
 	case "PROD":
 		return os.Getenv("GOOGLE_CLOUD_PROJECT")
 	default:
-		return "test"
+		return "test-project"
 	}
 
+}
+
+func getDBClient(ctx context.Context) *firestore.Client {
+	dbClient, err := firestore.NewClient(ctx, projectID)
+	if err != nil {
+		log.Fatalf("firestore.NewClient: %v", err)
+
+	}
+
+	return dbClient
 }
 
 func getRequestData(req *http.Request) (RequestData, error) {
@@ -119,14 +134,27 @@ func updateFeedFetchTime(ctx context.Context, d *firestore.DocumentRef) error {
 	return err
 }
 
-func createFetchedDoc(ctx context.Context, dbClient *firestore.Client, content FetchedDoc) (*firestore.DocumentRef, error) {
+func createFetchedDoc(ctx context.Context, content FetchedDoc) (*firestore.DocumentRef, error) {
 	doc, _, err := dbClient.Collection(FetchedCollection).Add(ctx, content)
 	return doc, err
 }
 
-func FetchURLAndStoreItsContent(w http.ResponseWriter, req *http.Request) {
+func init() {
 	ctx := context.Background()
+	projectID = getProjectID()
+
+	if env == "PROD" {
+		dbClient = getDBClient(ctx)
+	}
+}
+
+func FetchURLAndStoreItsContent(w http.ResponseWriter, req *http.Request) {
+	reqCtx := req.Context()
 	result := Result{}
+
+	if env == "TEST" {
+		dbClient = getDBClient(reqCtx)
+	}
 
 	requestData, err := getRequestData(req)
 	if err != nil {
@@ -135,41 +163,31 @@ func FetchURLAndStoreItsContent(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	projectID := getProjectID()
-
-	dbClient, err := firestore.NewClient(ctx, projectID)
-	if err != nil {
-		result.Status = err.Error()
-		writeResultOn(result, w)
-		return
-	}
-	defer dbClient.Close()
-
 	feedDoc := dbClient.Collection(FeedsCollection).Doc(requestData.DocumentID)
 
-	lockFeedDoc(ctx, feedDoc)
-	defer unlockFeedDoc(ctx, feedDoc)
+	lockFeedDoc(reqCtx, feedDoc)
+	defer unlockFeedDoc(reqCtx, feedDoc)
 
 	fetchedContent, err := fetchURLBody(requestData.URL)
+	if err != nil {
+		result.Status = err.Error()
+		writeResultOn(result, w)
+		updateFeedLastFetchStatus(reqCtx, feedDoc, err.Error())
+		return
+	}
 	result.Body = fetchedContent
+
+	fetchedDoc, err := createFetchedDoc(reqCtx, FetchedDoc{FeedRef: requestData.DocumentID, Content: fetchedContent})
 	if err != nil {
 		result.Status = err.Error()
 		writeResultOn(result, w)
-		updateFeedLastFetchStatus(ctx, feedDoc, err.Error())
+		updateFeedLastFetchStatus(reqCtx, feedDoc, err.Error())
 		return
 	}
-
-	fetchedDoc, err := createFetchedDoc(ctx, dbClient, FetchedDoc{FeedRef: requestData.DocumentID, Content: fetchedContent})
 	result.FetchedDocID = fetchedDoc.ID
-	if err != nil {
-		result.Status = err.Error()
-		writeResultOn(result, w)
-		updateFeedLastFetchStatus(ctx, feedDoc, err.Error())
-		return
-	}
 
-	updateFeedLastFetchStatus(ctx, feedDoc, LastStatusOk)
-	updateFeedFetchTime(ctx, feedDoc)
+	updateFeedLastFetchStatus(reqCtx, feedDoc, LastStatusOk)
+	updateFeedFetchTime(reqCtx, feedDoc)
 
 	result.Status = LastStatusOk
 	writeResultOn(result, w)
